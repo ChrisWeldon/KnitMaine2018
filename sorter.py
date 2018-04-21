@@ -1,122 +1,16 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-def evalMods(mods):
-	t = 0
-	zero_vect = []
-
-	for v in mods:
-		if v == 1:
-			t += 1
-		zero_vect.append(0)
-	if t >= len(mods)-1:
-		print("zero_vect was set")
-		return zero_vect
-	else:
-		return mods
-
-def findValue(vals,mods,index, priority="lower"):
-	#mods = evalMods(mods)
-	if priority == "lower":
-			for lamb, v in enumerate(vals):
-				if v == index -1 and mods[lamb] == 0:
-					vals[lamb] +=1
-					mods[lamb] +=1
-					return True
-
-	elif priority == "higher":
-			for lamb, v in enumerate(vals):
-				if v == index +1 and mods[lamb] == 0:
-					vals[lamb] -=1
-					mods[lamb] +=1
-					return True
-	else:
-		return False
+import random
+import itertools
+import threading
+import time
+import sys
+import csv
 
 def main():
-	vals = [1,1,2,3,3,5,5,3,7]
-	mods = [0,0,0,0,0,0,0,0,0]
-	modmax = 0
-	#print("valCount: ", valCount(vals))
-	print(vals)
-	print(mods)
-	print(valCount(vals))
-	m1 = {}
-	m2 = {}
-	topdown=True
-	while 0 not in valCount(vals) and len(vals) != len(set(vals)):
-		print("in while statement")
+	x = Loader()
 
-		if valCount(vals)[len(vals)] == 0 and len(vals) == len(set(vals))+1:
-			print("topdown set to false")
-			topdown = False
-		elif valCount(vals)[1] == 0 and len(vals) == len(set(vals))+1:
-			print("topdown set to true")
-			topdown = True
-
-		for index, value in valCount(vals).items():
-			print("looping on " + str(index) + " of loop through valCount with val: " + str(value))
-			print("vals: ", vals)
-			print("mods: ", mods)
-			mod = evalMods(mods)
-
-			if value == 0 and index-1 > 0 and index+1 <= len(vals) and topdown:
-
-				if valCount(vals)[index-1] > valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="lower")
-					break
-				elif valCount(vals)[index-1] < valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="higher")
-					break
-				elif valCount(vals)[index-1] == valCount(vals)[index+1] and valCount(vals)[index-1] > 1:
-					findValue(vals,mods,index, priority ="lower")
-					break
-				elif valCount(vals)[index-1] == valCount(vals)[index+1] and valCount(vals)[index-1] == 1:
-					findValue(vals,mods,index, priority ="lower")
-					break
-
-			elif value == 0 and index-1 > 0 and index+1 <= len(vals) and topdown == False:
-				if valCount(vals)[index-1] == valCount(vals)[index+1] and valCount(vals)[index-1] == 1:
-					findValue(vals,mods,index, priority ="lower")
-					break
-				elif valCount(vals)[index-1] > valCount(vals)[index+1] and valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="lower")
-					break
-				elif valCount(vals)[index-1] < valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="higher")
-					break
-				elif valCount(vals)[index-1] == valCount(vals)[index+1] and valCount(vals)[index-1] > 1:
-					findValue(vals,mods,index, priority ="higher")
-					break
-
-			elif value == 1 and index-1 > 0 and index+1 <= len(vals) and topdown:
-				if valCount(vals)[index-1] > valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="lower")
-					break
-				elif valCount(vals)[index-1]<valCount(vals)[index+1]:
-					findValue(vals,mods,index, priority ="higher")
-					break
-				elif valCount(vals)[index-1] == valCount(vals)[index+1] and valCount(vals)[index-1] == 1 :
-					print("VALUE IS 1")
-					findValue(vals,mods,index, priority ="higher")
-					break
-
-			elif index+1 > len(vals) and value == 0:
-				findValue(vals,mods,index, priority ="lower")
-				break
-			elif index-1 <= 0 and value == 0 and topdown:
-				findValue(vals,mods,index, priority ="higher")
-				break
-
-		print("\n-",valCount(vals), ":", topdown)
-		print("\t", vals)
-		print("\t", mods)
-
-	print("\n")
-	print(vals)
-	print(mods)
-	#x = Loader()
 
 def valCount(lst):
 	res = {}
@@ -130,6 +24,68 @@ def valCount(lst):
 	#del res[0]
 
 	return res
+
+def findIndexofNum(num, vals, topdown):
+	if num > len(vals):
+		raise Exception("The end of the list has been reached")
+	try:
+		inds = []
+		for i, v in enumerate(vals):
+			if v == num:
+				inds.append(i)
+		if len(inds)>1:
+			return random.choice(inds)
+		else:
+			return inds[0]
+	except IndexError:
+		if topdown:
+			return findIndexofNum(num+1, vals, topdown)
+		else:
+			return findIndexofNum(num-1, vals, topdown)
+
+
+def cleanList(list):
+	done = False
+	def animate():
+		for c in itertools.cycle(['|', '/', u"\u2015",'\\']):
+			if done:
+				break
+			sys.stdout.write('\rcleaning next set ' + c)
+			sys.stdout.flush()
+			time.sleep(0.1)
+	t = threading.Thread(target=animate)
+	t.start()
+	vals = list
+	#print(vals)
+	topdown = True
+	steps = 0
+	while 0 in valCount(vals).values():
+		steps += 1
+		valcount = valCount(vals)
+		if topdown:
+			for i in range(len(vals)):
+				if(valcount[i+1]) == 0:
+					try:
+						vals[findIndexofNum(i+2, vals,topdown)] -=1
+					except Exception:
+						#print("setting topdown False")
+						topdown = False
+					break
+		else:
+			for i in range(len(vals)):
+				j = len(vals)-(i+1)
+				if(valcount[j+1]) == 0:
+					try:
+						vals[findIndexofNum(j, vals,topdown)] +=1
+					except Exception:
+						#print("setting topdown True")
+						topdown = True
+					break
+
+		#print(vals)
+	sys.stdout.flush()
+	done = True
+	return vals
 
 class Loader:
 	def __init__(self):
@@ -181,7 +137,7 @@ class Loader:
 			"Sunday morning, September 9 [Susan Mills: Sew Your Own Needlecase]":"5SUNM"
 		}
 		self.daySplit = {
-			#"person" :[0,3],
+			"person" :[0,3],
 			"THUA" : [3, 9],
 			"FRIM": [9, 14],
 			"FRIA":[14, 20],
@@ -192,7 +148,6 @@ class Loader:
 		self.patrons = self.cleanData(self.patrons)
 		self.splitFrameByDays(self.patrons)
 		self.ridDuplicates(self.datasets)
-		pass
 
 	def idClasses(self, df):
 		#TODO id the classes in the dataset
@@ -220,15 +175,24 @@ class Loader:
 
 	def ridDuplicates(self, datasets):
 		for dataset in datasets:
+			if dataset == 0:
+				continue
 			print("----------------NEW DATASETS-----------------")
 			for index, row in datasets[dataset].iterrows():
 				print(datasets[dataset].iloc[index])
+				print(datasets[dataset].iloc[index])
 				if len(datasets[dataset].iloc[index]) != len(set(datasets[dataset].iloc[index])):
 					print("\t --DUPE")
+					datasets[dataset].iloc[index] = cleanList(datasets[dataset].iloc[index])
 				vc = valCount(row)
 				print(vc)
-				#for i, val in vc.items():
-				#	print(i, ", ", val)
+
+		#cleanResponses = open('data/cleanResponses.csv', 'w')
+		join = pd.concat(datasets, axis=1)
+		join.to_csv("data/cleanResponses.csv")
+
+
+
 	def sort_clients(self, frame):
 		#TODO sort patrons
 		self.patrons_final = self.patrons.copy()
